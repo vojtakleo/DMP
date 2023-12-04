@@ -7,6 +7,7 @@
 #include <Arduino.h>
 #include <math.h>
 #include <iostream>
+#include <WROVER_KIT_LCD.h>
 
 #define OLED_ADDR   0x3C
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
@@ -35,6 +36,9 @@ void rezimefektoru();
 void karx();
 void kary();
 void karz();
+void osaX();
+void osaY();
+void osaZ();
 void efektor1();
 void zpet2();
 void autor1();
@@ -70,7 +74,8 @@ int poz_serva3;
 int poz_serva4;
 int poz_serva5;
 int poz_serva6;
-
+float polohaX;
+float pozosx;
 
 //---------------------------------------------------------------------------souradnice----------------------------------------------------------------------------
 double rada,radb;
@@ -82,8 +87,8 @@ double lenght2 = 10;
 double X ,X1 ,X2;
 double Y ,Y1 ,Y2;
 double Z ,Z1 ,Z2;
-double delka0A,delkaAB;
-double uhel;
+float delka0A,delkaAB;
+double uhel,pomocuhel;
 double delka;
 //-------------------------------------------------------------------------setup-----------------------------------------------------------------------------
 void setup() {
@@ -205,11 +210,6 @@ if (tlacitko == 2 && poz == 2)
       break;
     }
 }
-if (tlacitko == 3 && poz == 2 && nav == 4)
-{
-  
-  efektor1();
-}
 
 if(tlacitko == 3 && poz == 3 )
 {
@@ -256,48 +256,33 @@ if (tlacitko == 3 && poz == 1)
       dlan.write(poz_serva6);
       break; 
     }
-}
-
-
-/*
-if (tlacitko == 3 && poz == 1 && nav == 1)
+}  
+if (tlacitko == 3 && poz == 2)
 {
-  ovl_osy1();
-  zakladna.write(poz_serva1);
+  if (nav > 4 || nav < 1)
+  {
+  nav = 1;
+  }
+ switch (nav)
+    {
+    case 1:
+      osaX();
+      break;
+    case 2:
+      osaY();
+      break;
+    case 3:
+      osaZ();
+      break;
+    case 4:
+      efektor1();
+      break;
+    } 
 }
-if (tlacitko == 3 && poz == 1 && nav == 2)
-{
-  ovl_osy2();
-  rameno.write(poz_serva2);
-}
-if (tlacitko == 3 && poz == 1 && nav == 3)
-{ 
-  ovl_osy3();
-  loket.write(poz_serva3); 
-}
-if (tlacitko == 3 && poz == 1 && nav == 4)
-{
-  ovl_osy4();
-  predlokti.write(poz_serva4);
-}
-if (tlacitko == 3 && poz == 1 && nav == 5)
-{
-  ovl_osy5();
-  zapesti.write(poz_serva5);
-}
-if (tlacitko == 3 && poz == 1 && nav == 6)
-{
-  ovl_osy6();
-  dlan.write(poz_serva6);
-}
-*/
- 
-  
-
   
 }
 
-//------------------------------------------------------------enkoder--------------------------------------------------------------------------------
+//------------------------------------------------------------ss--------------------------------------------------------------------------------
 void souradniceA()
 {
   alfa = poz_serva1;
@@ -318,19 +303,28 @@ void souradniceB()
   Y2 = sin(radg) * sin(rada) * lenght2 ;
   Z2 = cos(radg) * lenght2 + Z1;
   delkaAB = sqrt(pow(X2-X1 ,2)+pow(Y2-Y1 ,2)+pow(Z2-Z1 ,2));
-  uhel = 180 - poz_serva3 + 90;
-  if(uhel < 0)
-  {  uhel *= -1;  }
+  if (poz_serva3 > 40 )
+  {
+    uhel = 40;
+  }
+  else
+  {
+    uhel = poz_serva3;
+  }
   delka = sqrt(pow(delka0A,2)+pow(delkaAB,2)-2*delkaAB*delka0A*cos(uhel))   ;
 }
 void souradniceefeektor()
 {
-  delta = 90 - uhel / 2;
+  pomocuhel = delka/delkaAB*sin(uhel);
+  delta = poz_serva2 - pomocuhel;
   radd = PI / 180 * delta;
   X = sin(radd) * cos(rada) * delka;
   Y = sin(radd) * sin(rada) * delka;
   Z = cos(radd) * delka;
+  pozosx = X + polohaX;
+  
 }
+//------------------------------------------------------------enkoder--------------------------------------------------------------------------------
 void enkoder()
 {
 
@@ -353,6 +347,9 @@ void enkoder()
       {poz_serva5++;}
       if (tlacitko == 3 && poz == 1 && nav == 6)
       {poz_serva6++;}
+      if (tlacitko == 3 && poz == 2 && nav == 1)
+      {polohaX++;}
+      
     }
     else {
       if (tlacitko == 1)
@@ -371,6 +368,8 @@ void enkoder()
       {poz_serva5--;}
       if (tlacitko == 3 && poz == 1 && nav == 6)
       {poz_serva6--;}
+      if (tlacitko == 3 && poz == 2 && nav == 1)
+      {polohaX--;}
     }
   }
 stavPred = stavCLK;
@@ -540,9 +539,9 @@ void osa1(){
   display.setCursor(5, 25);
   display.println("2.druha osa");
   display.setCursor(5, 42);
-  display.println("3. treti osa");
+  display.println("3.treti osa");
   display.setCursor(5, 59);
-  display.println("4. treti osa");
+  display.println("4.ctvrta osa");
   display.display();
 
 }
@@ -563,9 +562,9 @@ void osa2(){
   display.setCursor(5, 25);
   display.println("2.druha osa");
   display.setCursor(5, 42);
-  display.println("3. treti osa");
+  display.println("3.treti osa");
   display.setCursor(5, 59);
-  display.println("4. treti osa");
+  display.println("4.ctvrta osa");
   display.display();
 }
 
@@ -586,9 +585,9 @@ void osa3(){
   display.setCursor(5, 25);
   display.println("2.druha osa");
   display.setCursor(5, 42);
-  display.println("3. treti osa");
+  display.println("3.treti osa");
   display.setCursor(5, 59);
-  display.println("4. treti osa");
+  display.println("4.ctvrta osa");
   display.display();
 }
 
@@ -607,11 +606,11 @@ void osa4(){
   display.setCursor(5, 8);
   display.println("2.druha osa");
   display.setCursor(5, 25);
-  display.println("3. treti osa");
+  display.println("3.treti osa");
   display.setCursor(5, 42);
-  display.println("4. treti osa");
+  display.println("4.ctvrta osa");
   display.setCursor(5, 59);
-  display.println("5. treti osa");
+  display.println("5.pata osa");
   display.display();
 }
 void osa5(){
@@ -629,11 +628,11 @@ void osa5(){
   display.setCursor(5, 8);
   display.println("3.druha osa");
   display.setCursor(5, 25);
-  display.println("4. treti osa");
+  display.println("4.ctvrta osa");
   display.setCursor(5, 42);
-  display.println("5. treti osa");
+  display.println("5.pata osa");
   display.setCursor(5, 59);
-  display.println("6. treti osa");
+  display.println("6.sesta osa");
   display.display();
 }
 void osa6(){
@@ -649,11 +648,11 @@ void osa6(){
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("4.druha osa");
+  display.println("4.ctvrta osa");
   display.setCursor(5, 25);
-  display.println("5. treti osa");
+  display.println("5.pata osa");
   display.setCursor(5, 42);
-  display.println("6. treti osa");
+  display.println("6.sesta osa");
   display.setCursor(5, 59);
   display.println("zpet");
   display.display();
@@ -673,9 +672,9 @@ void zpet1()
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("5.druha osa");
+  display.println("5.pata osa");
   display.setCursor(5, 25);
-  display.println("6. treti osa");
+  display.println("6.sesta osa");
   display.setCursor(5, 42);
   display.println("zpet");
   display.display();
@@ -715,11 +714,11 @@ void karx()
   display.setCursor(120, 8);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("1. osa X");
+  display.println("osa X");
   display.setCursor(5, 25);
-  display.println("2. osa Y");
+  display.println("osa Y");
   display.setCursor(5, 42);
-  display.println("3. osa Z");
+  display.println("osa Z");
   display.setCursor(5, 59);
   display.println("aktualni pozice");
   display.display();
@@ -738,11 +737,11 @@ void kary()
   display.setCursor(120, 25);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("1. osa X");
+  display.println("osa X");
   display.setCursor(5, 25);
-  display.println("2. osa Y");
+  display.println("osa Y");
   display.setCursor(5, 42);
-  display.println("3. osa Z");
+  display.println("osa Z");
   display.setCursor(5, 59);
   display.println("aktualni pozice");
   display.display(); 
@@ -761,11 +760,11 @@ void karz()
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("1. osa X");
+  display.println("osa X");
   display.setCursor(5, 25);
-  display.println("2. osa Y");
+  display.println("osa Y");
   display.setCursor(5, 42);
-  display.println("3. osa Z");
+  display.println("osa Z");
   display.setCursor(5, 59);
   display.println("aktualni pozice");
   display.display(); 
@@ -784,9 +783,9 @@ void aktpoz()
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("2. osa Y");
+  display.println("osa Y");
   display.setCursor(5, 25);
-  display.println("3. osa Z");
+  display.println("osa Z");
   display.setCursor(5, 42);
   display.println("aktualni pozice");
   display.setCursor(5, 59);
@@ -807,7 +806,7 @@ void zpet2()
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("3. osa Z");
+  display.println("osa Z");
   display.setCursor(5, 25);
   display.println("aktualni pozice");
   display.setCursor(5, 42);
@@ -815,6 +814,26 @@ void zpet2()
   display.display();
 }
 //------------------------------------------------------------------------------efektor osy-----------------------------------------------------------------------------------
+void osaX()
+{
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("osa X ");
+  display.setCursor(0, 8);
+  display.println("pozice efektoru:");
+  display.setCursor(20, 20);
+  display.println(pozosx);
+  display.setCursor(0, 28);
+  display.println("stisknutim tlacitka");
+  display.setCursor(0, 36);
+  display.println("se vratite zpet");
+  display.display();
+}
+void osaY(){}
+void osaZ(){}
+
 void efektor1()
 {
   
@@ -824,11 +843,11 @@ void efektor1()
   display.setCursor(0,5);
   display.println("aktualni souradnice");
   display.setCursor(0,13);
-  display.println("bodu A jsou :");
+  display.println("jsou :");
   display.setCursor(0,21);
   display.println("X =");
   display.setCursor(20,21);
-  display.println(X);
+  display.println(pozosx);
   display.setCursor(0,29);
   display.println("Y = ");
   display.setCursor(20,29);
