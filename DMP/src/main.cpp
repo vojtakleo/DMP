@@ -74,8 +74,8 @@ int poz_serva3;
 int poz_serva4;
 int poz_serva5;
 int poz_serva6;
-float polohaX;
-float pozosx;
+float polohaX,polohaY,polohaZ;
+float pozosx,pozosy,pozosz;
 
 //---------------------------------------------------------------------------souradnice----------------------------------------------------------------------------
 double rada,radb;
@@ -325,6 +325,8 @@ void souradniceefeektor()
   Y = sin(radd) * sin(rada) * delka;
   Z = cos(radd) * delka;
   pozosx = X + polohaX;
+  pozosy = Y + polohaY;
+  pozosz = Z + polohaZ - 5;
   
 }
 //------------------------------------------------------------enkoder--------------------------------------------------------------------------------
@@ -353,6 +355,10 @@ void enkoder()
       {poz_serva6++;}
       if (tlacitko == 3 && poz == 2 && nav == 1)
       {polohaX++;}
+      if (tlacitko == 3 && poz == 2 && nav == 2)
+      {polohaY++;}
+      if (tlacitko == 3 && poz == 2 && nav == 3)
+      {polohaZ++;}
       
     }
     else {
@@ -374,6 +380,10 @@ void enkoder()
       {poz_serva6--;}
       if (tlacitko == 3 && poz == 2 && nav == 1)
       {polohaX--;}
+      if (tlacitko == 3 && poz == 2 && nav == 2)
+      {polohaY--;}
+      if (tlacitko == 3 && poz == 2 && nav == 3)
+      {polohaZ--;}
     }
   }
 stavPred = stavCLK;
@@ -836,8 +846,41 @@ void osaX()
   display.println("se vratite zpet");
   display.display();
 }
-void osaY(){}
-void osaZ(){}
+void osaY()
+{
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("osa Y ");
+  display.setCursor(0, 8);
+  display.println("pozice efektoru:");
+  display.setCursor(20, 20);
+  display.println(pozosy);
+  display.setCursor(0, 28);
+  display.println("stisknutim tlacitka");
+  display.setCursor(0, 36);
+  display.println("se vratite zpet");
+  display.display();
+}
+void osaZ()
+{  
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("osa Z ");
+  display.setCursor(0, 8);
+  display.println("pozice efektoru:");
+  display.setCursor(20, 20);
+  display.println(pozosz);
+  display.setCursor(0, 28);
+  display.println("stisknutim tlacitka");
+  display.setCursor(0, 36);
+  display.println("se vratite zpet");
+  display.display();
+  }
+
 
 void efektor1()
 {
@@ -856,11 +899,11 @@ void efektor1()
   display.setCursor(0,29);
   display.println("Y = ");
   display.setCursor(20,29);
-  display.println(Y);
+  display.println(pozosy);
   display.setCursor(0,37);
   display.println("Z = ");
   display.setCursor(20,37);
-  display.println(Z);
+  display.println(pozosz);
   display.display();
  }
 //--------------------------------------------------------------------efektor----------------------------------------------------------------------------
