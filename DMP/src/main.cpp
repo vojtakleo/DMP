@@ -82,8 +82,8 @@ double rada,radb;
 double radg,radd;
 double alfa ,beta;
 double gama, delta;
-double lenght1 = 20;
-double lenght2 = 10;
+double lenght1 = 210;
+double lenght2 = 205;
 double X ,X1 ,X2;
 double Y ,Y1 ,Y2;
 double Z ,Z1 ,Z2;
@@ -106,6 +106,7 @@ void setup() {
   dlan.attach(14);
 }
 //-------------------------------------------------------------------------loop-----------------------------------------------------------------------------
+// z loopu jsou pomoci logiky funkcí if a switch volány funkce níže v kodu
 void loop() {
 enkoder();
 kontrola();
@@ -283,6 +284,8 @@ if (tlacitko == 3 && poz == 2)
 }
 
 //------------------------------------------------------------ss--------------------------------------------------------------------------------
+// výpočet polohy efektoru pomocí převodu sferických souřadnic na kartezské a pote z délky vektorů a známeho úhlu(cos. věta ) dopočítáme třetí stranu trojúhelníku
+// díky které jsme poté schopni určit polohu efektoru
 void souradniceA()
 {
   alfa = poz_serva1;
@@ -325,6 +328,7 @@ void souradniceefeektor()
   
 }
 //------------------------------------------------------------enkoder--------------------------------------------------------------------------------
+// zdroj kodu na čtení enkodéru: https://navody.dratek.cz/navody-k-produktum/rotacni-enkoder-ky-040.html
 void enkoder()
 {
 
@@ -416,8 +420,9 @@ void kontrola()
 
 }
 
-
+// zde jsou všechny funkce na vypsání textu na oled displej
 //-----------------------------------------------------------------prvni menu---------------------------------------------------------------------------
+
 void uvod()
 {
   
