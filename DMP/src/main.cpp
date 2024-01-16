@@ -55,9 +55,9 @@ Servo rameno;
 Servo predlokti;
 Servo dlan;
 //---------------------------------------------------------------------------globalni promene----------------------------------------------------------------------------
-int CLK = 0;
-int DT = 2;
-int SW = 15;
+int CLK = 5;
+int DT = 17;
+int SW = 16;
 int maximum = 181;
 int minimum = -1;
 int poz = 1;
