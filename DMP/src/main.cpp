@@ -1,5 +1,5 @@
-#include <Wire.h>
 #include <SPI.h>
+#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ESP32Servo.h>
@@ -7,9 +7,9 @@
 #include <Arduino.h>
 #include <math.h>
 #include <iostream>
-#include <WROVER_KIT_LCD.h>
 
-#define OLED_ADDR   0x3C
+
+
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 //---------------------------------------------------------------------------funkce-------------------------------------------------------------------------
@@ -96,7 +96,9 @@ void setup() {
   pinMode(DT,INPUT);
   stavPred = digitalRead(CLK);
   pinMode(SW, INPUT_PULLUP);
-  display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+  display.begin(SSD1306_SWITCHCAPVCC,  0x3C);
+  display.clearDisplay();
+  display.display();
   uvod();
   zakladna.attach(32);
   rameno.attach(33);
@@ -234,27 +236,21 @@ if (tlacitko == 3 && poz == 1)
     {
     case 1:
       ovl_osy1();
-      zakladna.write(poz_serva1);
       break;
     case 2:
       ovl_osy2();
-      rameno.write(poz_serva2);
       break;
     case 3:
       ovl_osy3();
-      loket.write(poz_serva3);
       break;
     case 4:
       ovl_osy4();
-      predlokti.write(poz_serva4);
       break;
     case 5:
       ovl_osy5();
-      zapesti.write(poz_serva5);
       break;
       case 6:
       ovl_osy6();
-      dlan.write(poz_serva6);
       break; 
     }
 }  
@@ -396,6 +392,12 @@ if (stavSW == 0) {
 if (tlacitko > 3)
   {
   tlacitko = 2;
+  zakladna.write(poz_serva1);
+  rameno.write(poz_serva2);
+  loket.write(poz_serva3);
+  predlokti.write(poz_serva4);
+  zapesti.write(poz_serva5);
+  dlan.write(poz_serva6);
   } 
   
 }
