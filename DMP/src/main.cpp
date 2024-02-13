@@ -1,4 +1,5 @@
 #include <SPI.h>
+#include <SD.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -7,11 +8,12 @@
 #include <Arduino.h>
 #include <math.h>
 #include <iostream>
-
+#include <ArduinoEigenDense.h>
+#include <cmath>
 
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
-
+using Eigen::MatrixXd;
 //---------------------------------------------------------------------------funkce-------------------------------------------------------------------------
 void uvod();
 void osovy_rezim();
@@ -47,17 +49,21 @@ void aktpoz();
 void souradniceA();
 void souradniceB();
 void souradniceefeektor();
+void inv_kinematika();
+void aktualni_pozice();
 //---------------------------------------------------------------------------inicializace serv---------------------------------------------------------------------------
 Servo zakladna;
 Servo zapesti;
 Servo loket;
 Servo rameno;
 Servo predlokti;
-Servo dlan;
+Servo ruka;
+Servo efektor;
 //---------------------------------------------------------------------------globalni promene----------------------------------------------------------------------------
-int CLK = 5;
-int DT = 17;
-int SW = 16;
+int CLK = 4;
+int DT = 16;
+int SW = 17;
+int miror = 180;
 int maximum = 181;
 int minimum = -1;
 int poz = 1;
@@ -65,10 +71,11 @@ int nav = 0;
 int stavPred;
 int stavCLK;
 int stavSW;
-int parek = 0;
+float parek = 0;
 int poziceEnkod = 0;
 int tlacitko;
 int poz_serva1;
+float pol;
 int poz_serva2;
 int poz_serva3;
 int poz_serva4;
@@ -78,18 +85,17 @@ float polohaX,polohaY,polohaZ;
 float pozosx,pozosy,pozosz;
 
 //---------------------------------------------------------------------------souradnice----------------------------------------------------------------------------
-double rada,radb;
-double radg,radd;
-double alfa ,beta;
-double gama, delta;
-double lenght1 = 210;
-double lenght2 = 205;
-double X ,X1 ,X2;
-double Y ,Y1 ,Y2;
-double Z ,Z1 ,Z2;
-float delka0A,delkaAB;
-double uhel,pomocuhel;
-double delka;
+int alfa;
+int alfa2;
+int alfa3;
+int const L1 = 242;     //zem   -> osa2
+int const L2 = 0;       //osa2  -> osa3 v x
+int const L3 = 209;     //osa2  -> osa3 v y
+int const L4 = 100;     //osa3  -> osa4
+int const L5 = 112;     //osa4  -> osa5
+int const L6 = 142;     //osa5  -> konec efektoru
+int x,y,z,s,r;
+double rad1, rad2, rad3, rad4, rad5;
 //-------------------------------------------------------------------------setup-----------------------------------------------------------------------------
 void setup() {
   pinMode(CLK,INPUT);
@@ -102,20 +108,19 @@ void setup() {
   uvod();
   zakladna.attach(32);
   rameno.attach(33);
-  loket.attach(25);
-  predlokti.attach(26);
-  zapesti.attach(27);
-  dlan.attach(14);
+  ruka.attach(25);
+  loket.attach(26);
+  predlokti.attach(27);
+  zapesti.attach(14);
+  efektor.attach(12);
 }
 //-------------------------------------------------------------------------loop-----------------------------------------------------------------------------
 // z loopu jsou pomoci logiky funkcí if a switch volány funkce níže v kodu
 void loop() {
 enkoder();
 kontrola();
-souradniceA();
-souradniceB();
-souradniceefeektor();
-
+inv_kinematika();
+aktualni_pozice();
 if (tlacitko == 0){
   uvod();
 }
@@ -220,7 +225,7 @@ autor1();
   stavSW = digitalRead(SW);
         if (stavSW == 0) {
         tlacitko=1;
-        delay(250);
+        delay(150);
         }
 }
 
@@ -279,52 +284,6 @@ if (tlacitko == 3 && poz == 2)
   
 }
 
-//------------------------------------------------------------ss--------------------------------------------------------------------------------
-// výpočet polohy efektoru pomocí převodu sferických souřadnic na kartezské a pote z délky vektorů a známeho úhlu(cos. věta ) dopočítáme třetí stranu trojúhelníku
-// díky které jsme poté schopni určit polohu efektoru
-void souradniceA()
-{
-  alfa = poz_serva1;
-  beta = poz_serva2;
-  rada = PI / 180 * alfa;
-  radb = PI / 180 * beta;
-  X1 = sin(radb) * cos(rada) * lenght1;
-  Y1 = sin(radb) * sin(rada) * lenght1;
-  Z1 = cos(radb) * lenght1;
-  delka0A = sqrt(pow(X1-0 ,2)+pow(Y1-0 ,2)+pow(Z1-0 ,2));
-}
-
-void souradniceB()
-{
-  gama = poz_serva3;
-  radg = PI / 180 * gama;
-  X2 = sin(radg) * cos(rada) * lenght2 ;
-  Y2 = sin(radg) * sin(rada) * lenght2 ;
-  Z2 = cos(radg) * lenght2 + Z1;
-  delkaAB = sqrt(pow(X2-X1 ,2)+pow(Y2-Y1 ,2)+pow(Z2-Z1 ,2));
-  if (poz_serva3 > 40 )
-  {
-    uhel = 40;
-  }
-  else
-  {
-    uhel = poz_serva3;
-  }
-  delka = sqrt(pow(delka0A,2)+pow(delkaAB,2)-2*delkaAB*delka0A*cos(uhel))   ;
-}
-void souradniceefeektor()
-{
-  pomocuhel = delka/delkaAB*sin(uhel);
-  delta = poz_serva2 - pomocuhel;
-  radd = PI / 180 * delta;
-  X = sin(radd) * cos(rada) * delka;
-  Y = sin(radd) * sin(rada) * delka;
-  Z = cos(radd) * delka;
-  pozosx = X + polohaX;
-  pozosy = Y + polohaY;
-  pozosz = Z + polohaZ - 5;
-  
-}
 //------------------------------------------------------------enkoder--------------------------------------------------------------------------------
 // zdroj kodu na čtení enkodéru: https://navody.dratek.cz/navody-k-produktum/rotacni-enkoder-ky-040.html
 void enkoder()
@@ -334,36 +293,11 @@ void enkoder()
   if (stavCLK != stavPred) {
     if (digitalRead(DT) != stavCLK) {
       if (tlacitko == 1)
-      {poz++;}
-      if (tlacitko == 2)
-      {nav++;}
-      if (tlacitko == 3 && poz == 1 && nav == 1)
-      {poz_serva1++;}
-      if (tlacitko == 3 && poz == 1 && nav == 2)
-      {poz_serva2++;}
-      if (tlacitko == 3 && poz == 1 && nav == 3)
-      {poz_serva3++;}
-      if (tlacitko == 3 && poz == 1 && nav == 4)
-      {poz_serva4++;}
-      if (tlacitko == 3 && poz == 1 && nav == 5)
-      {poz_serva5++;}
-      if (tlacitko == 3 && poz == 1 && nav == 6)
-      {poz_serva6++;}
-      if (tlacitko == 3 && poz == 2 && nav == 1)
-      {polohaX++;}
-      if (tlacitko == 3 && poz == 2 && nav == 2)
-      {polohaY++;}
-      if (tlacitko == 3 && poz == 2 && nav == 3)
-      {polohaZ++;}
-      
-    }
-    else {
-      if (tlacitko == 1)
       {poz--;}
       if (tlacitko == 2)
       {nav--;}
       if (tlacitko == 3 && poz == 1 && nav == 1)
-      {poz_serva1--;}
+      {pol--;}
       if (tlacitko == 3 && poz == 1 && nav == 2)
       {poz_serva2--;}
       if (tlacitko == 3 && poz == 1 && nav == 3)
@@ -380,6 +314,31 @@ void enkoder()
       {polohaY--;}
       if (tlacitko == 3 && poz == 2 && nav == 3)
       {polohaZ--;}
+      
+    }
+   else {
+      if (tlacitko == 1)
+      {poz++;}
+      if (tlacitko == 2)
+      {nav++;}
+      if (tlacitko == 3 && poz == 1 && nav == 1)
+      {pol++;}
+      if (tlacitko == 3 && poz == 1 && nav == 2)
+      {poz_serva2++;}
+      if (tlacitko == 3 && poz == 1 && nav == 3)
+      {poz_serva3++;}
+      if (tlacitko == 3 && poz == 1 && nav == 4)
+      {poz_serva4++;}
+      if (tlacitko == 3 && poz == 1 && nav == 5)
+      {poz_serva5++;}
+      if (tlacitko == 3 && poz == 1 && nav == 6)
+      {poz_serva6++;}
+      if (tlacitko == 3 && poz == 2 && nav == 1)
+      {polohaX++;}
+      if (tlacitko == 3 && poz == 2 && nav == 2)
+      {polohaY++;}
+      if (tlacitko == 3 && poz == 2 && nav == 3)
+      {polohaZ++;}
     }
   }
 stavPred = stavCLK;
@@ -392,20 +351,25 @@ if (stavSW == 0) {
 if (tlacitko > 3)
   {
   tlacitko = 2;
+  miror = 180 - poz_serva2;
+  parek = ((pol+135)/270)*180;
+  poz_serva1 = parek;
   zakladna.write(poz_serva1);
   rameno.write(poz_serva2);
+  ruka.write(miror);
   loket.write(poz_serva3);
   predlokti.write(poz_serva4);
   zapesti.write(poz_serva5);
-  dlan.write(poz_serva6);
+  efektor.write(poz_serva6);
   } 
   
 }
 //--------------------------------------------------------------------serva------------------------------------------------------------------------------
 void kontrola()
 {
-  if (poz_serva1 >= maximum)
-  { poz_serva1 = 180; }
+
+  if (pol >= 135)
+  { pol = 135; }
   if (poz_serva2 >= maximum)
   { poz_serva2 = 180; }
   if (poz_serva3 >= maximum)
@@ -414,11 +378,11 @@ void kontrola()
   { poz_serva4 = 180; }
   if (poz_serva5 >= maximum)
   { poz_serva5 = 180; }
-  if (poz_serva6 >= maximum)
-  { poz_serva6 = 180; }
+  if (poz_serva6 >= 70)
+  { poz_serva6 = 70; }
 
-  if (poz_serva1 <= minimum)
-  { poz_serva1 = 0; }
+  if (pol <= -135)
+  { pol = -135; }
   if (poz_serva2 <= minimum)
   { poz_serva2 = 0; }
   if (poz_serva3 <= minimum)
@@ -649,7 +613,7 @@ void osa5(){
   display.setCursor(5, 42);
   display.println("5.pata osa");
   display.setCursor(5, 59);
-  display.println("6.sesta osa");
+  display.println("6.efektor");
   display.display();
 }
 void osa6(){
@@ -669,7 +633,7 @@ void osa6(){
   display.setCursor(5, 25);
   display.println("5.pata osa");
   display.setCursor(5, 42);
-  display.println("6.sesta osa");
+  display.println("6.efektor");
   display.setCursor(5, 59);
   display.println("zpet");
   display.display();
@@ -691,7 +655,7 @@ void zpet1()
   display.setCursor(5, 8);
   display.println("5.pata osa");
   display.setCursor(5, 25);
-  display.println("6.sesta osa");
+  display.println("6.efektor");
   display.setCursor(5, 42);
   display.println("zpet");
   display.display();
@@ -841,7 +805,7 @@ void osaX()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(pozosx);
+  display.println(x);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
@@ -858,7 +822,7 @@ void osaY()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(pozosy);
+  display.println(y);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
@@ -875,7 +839,7 @@ void osaZ()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(pozosz);
+  display.println(z);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
@@ -897,15 +861,15 @@ void efektor1()
   display.setCursor(0,21);
   display.println("X =");
   display.setCursor(20,21);
-  display.println(pozosx);
+  display.println(x);
   display.setCursor(0,29);
   display.println("Y = ");
   display.setCursor(20,29);
-  display.println(pozosy);
+  display.println(y);
   display.setCursor(0,37);
   display.println("Z = ");
   display.setCursor(20,37);
-  display.println(pozosz);
+  display.println(z);
   display.display();
  }
 //--------------------------------------------------------------------efektor----------------------------------------------------------------------------
@@ -943,7 +907,7 @@ void ovl_osy1()
   display.setCursor(0, 8);
   display.println("uhel otoceni:");
   display.setCursor(100, 8);
-  display.println(poz_serva1);
+  display.println(pol);
   display.setCursor(0, 20);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 28);
@@ -1034,4 +998,78 @@ void ovl_osy6()
   display.setCursor(0, 28);
   display.println("se vratite zpet");
   display.display();
+}
+void inv_kinematika(){
+    s = z - 242;
+    // 242 vzdálenost od zeme k druhe ose
+    r = sqrt(pow(x, 2) + pow(y, 2));
+    rad1 = atan2(y, x);
+
+    rad2 = asin(((alfa2 + alfa3 * cos(poz_serva3)) * s - alfa3 * sin(poz_serva3) * r) / (pow(r, 2) * pow(s, 2)));
+
+    rad3 = acos((pow(r, 2) + pow(s, 2) - pow(alfa2, 2) - pow(alfa3, 2)) / (2 * alfa2 * alfa3));
+
+    rad4 = atan2(-cos(poz_serva1) * sin(poz_serva2*poz_serva3) * y - sin(poz_serva1) * sin(poz_serva2*poz_serva3) * z + cos(poz_serva2*poz_serva3) * z 
+    + cos(poz_serva2*poz_serva3) * z , cos(poz_serva1) * cos(poz_serva2*poz_serva3) * y + sin(poz_serva1) * cos(poz_serva2*poz_serva3) * z + sin(poz_serva2*poz_serva3) * 0);
+    
+    rad5 = atan2(+-sqrt(1-pow(sin(poz_serva1)*y-cos(poz_serva1) *z,2)),sin(poz_serva1)*y-cos(poz_serva1)*sin(poz_serva2*poz_serva3));
+
+    poz_serva1 = rad1*180/PI;
+    poz_serva2 = rad2*180/PI;
+    poz_serva3 = rad3*180/PI;
+    poz_serva4 = rad4*180/PI;
+    poz_serva5 = rad5*180/PI;
+}
+void aktualni_pozice(){
+
+MatrixXd DH(6, 4);
+DH <<
+    0, 0, L1, poz_serva1,
+    0,90 ,0, poz_serva2,
+    L2, 0, -L3, poz_serva3+90,
+    0, -90, 0, poz_serva4-90,
+    L4+L5, 90, 0, poz_serva5,
+    0, 0, L6, poz_serva6;
+// ai-1 | alfa i-1 | di|uheli| 
+alfa = DH(1,1);
+alfa2= DH(1,3);
+alfa3= DH(1,4);
+
+MatrixXd A(4, 4);
+A << 
+    cos(poz_serva1), -sin(poz_serva1), 0, 0,
+    sin(poz_serva1), cos(poz_serva1),0,0,
+    0, 0,1,L1,
+    0, 0, 0, 1;
+
+MatrixXd B(4, 4);
+B << 
+    cos(poz_serva2), -sin(poz_serva2), 0, 0,
+    sin(poz_serva2)*cos(alfa),cos(poz_serva2)*cos(alfa), -sin(alfa), 0,
+    sin(poz_serva2)*sin(alfa), cos(poz_serva2)*sin(alfa), cos(alfa), 0,
+    0, 0, 0, 1;
+
+MatrixXd C(4, 4);
+C << 
+    cos(poz_serva3 + 90), -sin(poz_serva3 + 90), 0, L2,
+    sin(poz_serva3 + 90) , cos(poz_serva3 + 90) , 0, 0,
+    0, 0, 1, -L3,
+    0, 0, 0, 1;
+
+MatrixXd D(4, 4);
+D << 
+    cos(poz_serva4), -sin(poz_serva4), 0, 0,
+    sin(poz_serva4) * cos(alfa2), cos(poz_serva4) * cos(alfa2), -sin(alfa2),0,
+    sin(poz_serva4) * sin(alfa2), cos(poz_serva4) * sin(alfa2), cos(alfa2),0,
+    0, 0, 0, 1;
+
+MatrixXd E(4, 4);
+E << 
+    cos(poz_serva5), -sin(poz_serva5), 0, L4 + L5,
+    sin(poz_serva5) * cos(alfa3), cos(poz_serva5) * cos(alfa3), -sin(alfa3), 0,
+    sin(poz_serva5) * sin(alfa3), cos(poz_serva5) * sin(alfa3), cos(alfa3),0,
+    0, 0, 0, 1;
+
+MatrixXd G = A * B * C * D * E;
+
 }
