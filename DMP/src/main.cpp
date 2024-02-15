@@ -1,4 +1,5 @@
-
+#include <SPI.h>
+#include "FS.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -40,6 +41,8 @@ void karz();
 void osaX();
 void osaY();
 void osaZ();
+void potvrdBod();
+void bod();
 void efektor1();
 void zpet2();
 void autor1();
@@ -69,7 +72,7 @@ int stavCLK;
 int stavSW;
 float parek = 0;
 int poziceEnkod = 0;
-int tlacitko;
+int tlacitko =0;
 int poz_serva1;
 float pol;
 int poz_serva2;
@@ -81,17 +84,18 @@ float polohaX,polohaY,polohaZ;
 float pozosx,pozosy,pozosz;
 
 //---------------------------------------------------------------------------souradnice----------------------------------------------------------------------------
-int alfa;
-int alfa2;
-int alfa3;
+float const alfa = 90/180;
+float const alfa2 = -90/180;
+float const alfa3 = 90/180;
 int const L1 = 242;     //zem   -> osa2
 int const L2 = 0;       //osa2  -> osa3 v x
 int const L3 = 209;     //osa2  -> osa3 v y
 int const L4 = 100;     //osa3  -> osa4
 int const L5 = 112;     //osa4  -> osa5
 int const L6 = 142;     //osa5  -> konec efektoru
-int x,y,z,s,r;
-double rad1, rad2, rad3, rad4, rad5;
+float x, y, z;
+int s,r;
+float rad1, rad2, rad3, rad4, rad5;
 //-------------------------------------------------------------------------setup-----------------------------------------------------------------------------
 void setup() {
   pinMode(CLK,INPUT);
@@ -115,8 +119,7 @@ void setup() {
 void loop() {
 enkoder();
 kontrola();
-inv_kinematika();
-aktualni_pozice();
+
 if (tlacitko == 0){
   uvod();
 }
@@ -183,7 +186,7 @@ if (tlacitko == 2 && poz == 1)
 }
 if (tlacitko == 2 && poz == 2)
 {
-  if (nav > 5 || nav < 0)
+  if (nav > 6 || nav < 0)
   {
   nav = 0;
   }
@@ -199,16 +202,15 @@ if (tlacitko == 2 && poz == 2)
       karz();
       break;
     case 4:
-      aktpoz();
+      potvrdBod();
       break;
     case 5:
-      zpet2();
-        stavSW = digitalRead(SW);
-        if (stavSW == 0) {
-        tlacitko=1;
-        delay(250);
-        }
+      aktualni_pozice();
+      aktpoz();
       break; 
+      case 6:
+        zpet2();
+        break; 
       default:
       rezimefektoru();
       break;
@@ -257,7 +259,7 @@ if (tlacitko == 3 && poz == 1)
 }  
 if (tlacitko == 3 && poz == 2)
 {
-  if (nav > 4 || nav < 1)
+  if (nav > 6 || nav < 1)
   {
   nav = 1;
   }
@@ -273,11 +275,36 @@ if (tlacitko == 3 && poz == 2)
       osaZ();
       break;
     case 4:
-      efektor1();
+      inv_kinematika();
+      bod();
       break;
+    case 5:
+      efektor1();
+    break;
+    case 6:
+    if (stavSW == 0) {
+        tlacitko=1;
+        delay(250);
+        }
+     break;
     } 
 }
-  
+if (tlacitko == 4 )
+  {
+  tlacitko = 2;
+  miror = 180 - poz_serva2;
+  parek = ((pol+135)/270)*180;
+  poz_serva1 = parek;
+  zakladna.write(poz_serva1);
+  rameno.write(poz_serva2);
+  ruka.write(miror);
+  loket.write(poz_serva3);
+  predlokti.write(poz_serva4);
+  zapesti.write(poz_serva5);
+  efektor.write(poz_serva6);
+  } 
+
+
 }
 
 //------------------------------------------------------------enkoder--------------------------------------------------------------------------------
@@ -288,31 +315,6 @@ void enkoder()
   stavCLK = digitalRead(CLK);
   if (stavCLK != stavPred) {
     if (digitalRead(DT) != stavCLK) {
-      if (tlacitko == 1)
-      {poz--;}
-      if (tlacitko == 2)
-      {nav--;}
-      if (tlacitko == 3 && poz == 1 && nav == 1)
-      {pol--;}
-      if (tlacitko == 3 && poz == 1 && nav == 2)
-      {poz_serva2--;}
-      if (tlacitko == 3 && poz == 1 && nav == 3)
-      {poz_serva3--;}
-      if (tlacitko == 3 && poz == 1 && nav == 4)
-      {poz_serva4--;}
-      if (tlacitko == 3 && poz == 1 && nav == 5)
-      {poz_serva5--;}
-      if (tlacitko == 3 && poz == 1 && nav == 6)
-      {poz_serva6--;}
-      if (tlacitko == 3 && poz == 2 && nav == 1)
-      {polohaX--;}
-      if (tlacitko == 3 && poz == 2 && nav == 2)
-      {polohaY--;}
-      if (tlacitko == 3 && poz == 2 && nav == 3)
-      {polohaZ--;}
-      
-    }
-   else {
       if (tlacitko == 1)
       {poz++;}
       if (tlacitko == 2)
@@ -335,6 +337,31 @@ void enkoder()
       {polohaY++;}
       if (tlacitko == 3 && poz == 2 && nav == 3)
       {polohaZ++;}
+      
+    }
+   else {
+      if (tlacitko == 1)
+      {poz--;}
+      if (tlacitko == 2)
+      {nav--;}
+      if (tlacitko == 3 && poz == 1 && nav == 1)
+      {pol--;}
+      if (tlacitko == 3 && poz == 1 && nav == 2)
+      {poz_serva2--;}
+      if (tlacitko == 3 && poz == 1 && nav == 3)
+      {poz_serva3--;}
+      if (tlacitko == 3 && poz == 1 && nav == 4)
+      {poz_serva4--;}
+      if (tlacitko == 3 && poz == 1 && nav == 5)
+      {poz_serva5--;}
+      if (tlacitko == 3 && poz == 1 && nav == 6)
+      {poz_serva6--;}
+      if (tlacitko == 3 && poz == 2 && nav == 1)
+      {polohaX--;}
+      if (tlacitko == 3 && poz == 2 && nav == 2)
+      {polohaY--;}
+      if (tlacitko == 3 && poz == 2 && nav == 3)
+      {polohaZ--;}
     }
   }
 stavPred = stavCLK;
@@ -344,20 +371,6 @@ if (stavSW == 0) {
     delay(250);
   }
 
-if (tlacitko > 3)
-  {
-  tlacitko = 2;
-  miror = 180 - poz_serva2;
-  parek = ((pol+135)/270)*180;
-  poz_serva1 = parek;
-  zakladna.write(poz_serva1);
-  rameno.write(poz_serva2);
-  ruka.write(miror);
-  loket.write(poz_serva3);
-  predlokti.write(poz_serva4);
-  zapesti.write(poz_serva5);
-  efektor.write(poz_serva6);
-  } 
   
 }
 //--------------------------------------------------------------------serva------------------------------------------------------------------------------
@@ -697,7 +710,7 @@ void karx()
   display.setCursor(5, 42);
   display.println("osa Z");
   display.setCursor(5, 59);
-  display.println("aktualni pozice");
+  display.println("potvrdit bod");
   display.display();
 }
 void kary()
@@ -720,7 +733,7 @@ void kary()
   display.setCursor(5, 42);
   display.println("osa Z");
   display.setCursor(5, 59);
-  display.println("aktualni pozice");
+  display.println("potvrdit bod");
   display.display(); 
 }
 void karz()
@@ -743,10 +756,10 @@ void karz()
   display.setCursor(5, 42);
   display.println("osa Z");
   display.setCursor(5, 59);
-  display.println("aktualni pozice");
+  display.println("potvrdit bod");
   display.display(); 
 }
-void aktpoz()
+void potvrdBod()
 {
   display.clearDisplay();
   display.setTextColor(WHITE);
@@ -763,6 +776,29 @@ void aktpoz()
   display.println("osa Y");
   display.setCursor(5, 25);
   display.println("osa Z");
+  display.setCursor(5, 42);
+  display.println("potvrdit bod");
+  display.setCursor(5, 59);
+  display.println("aktualni pozice");
+  display.display();
+}
+void aktpoz()
+{
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 34);
+  display.println("_____________________");
+  display.setCursor(0, 42);
+  display.println("|");
+  display.setCursor(0, 46);
+  display.println("_____________________");
+  display.setCursor(120, 42);
+  display.println("|");
+  display.setCursor(5, 8);
+  display.println("osa Z");
+  display.setCursor(5, 25);
+  display.println("potvrdit bod");
   display.setCursor(5, 42);
   display.println("aktualni pozice");
   display.setCursor(5, 59);
@@ -783,16 +819,18 @@ void zpet2()
   display.setCursor(120, 42);
   display.println("|");
   display.setCursor(5, 8);
-  display.println("osa Z");
+  display.println("potvrdit bod");
   display.setCursor(5, 25);
   display.println("aktualni pozice");
   display.setCursor(5, 42);
   display.println("zpet");
   display.display();
 }
+
 //------------------------------------------------------------------------------efektor osy-----------------------------------------------------------------------------------
 void osaX()
 {
+  pozosx = x + polohaX;
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
@@ -801,7 +839,7 @@ void osaX()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(x);
+  display.println(pozosx);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
@@ -810,6 +848,7 @@ void osaX()
 }
 void osaY()
 {
+  pozosy = y + polohaY;
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
@@ -818,7 +857,7 @@ void osaY()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(y);
+  display.println(pozosy);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
@@ -826,7 +865,8 @@ void osaY()
   display.display();
 }
 void osaZ()
-{  
+{
+  pozosz = z + polohaZ;
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(1);
@@ -835,14 +875,23 @@ void osaZ()
   display.setCursor(0, 8);
   display.println("pozice efektoru:");
   display.setCursor(20, 20);
-  display.println(z);
+  display.println(pozosz);
   display.setCursor(0, 28);
   display.println("stisknutim tlacitka");
   display.setCursor(0, 36);
   display.println("se vratite zpet");
   display.display();
   }
-
+void bod(){
+  inv_kinematika(); 
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(5, 8);
+  display.println(" probyha vypocet a  presun");
+  display.display(); 
+  }
+ 
 
 void efektor1()
 {
@@ -996,42 +1045,35 @@ void ovl_osy6()
   display.display();
 }
 void inv_kinematika(){
-    s = z - 242;
+    s = pozosz - 242;
     // 242 vzdálenost od zeme k druhe ose
-    r = sqrt(pow(x, 2) + pow(y, 2));
-    rad1 = atan2(y, x);
+    r = sqrt(pow(pozosx, 2) + pow(pozosy, 2));
+    rad1 = atan2(pozosy,pozosx);
 
     rad2 = asin(((alfa2 + alfa3 * cos(poz_serva3)) * s - alfa3 * sin(poz_serva3) * r) / (pow(r, 2) * pow(s, 2)));
 
     rad3 = acos((pow(r, 2) + pow(s, 2) - pow(alfa2, 2) - pow(alfa3, 2)) / (2 * alfa2 * alfa3));
 
-    rad4 = atan2(-cos(poz_serva1) * sin(poz_serva2*poz_serva3) * y - sin(poz_serva1) * sin(poz_serva2*poz_serva3) * z + cos(poz_serva2*poz_serva3) * z 
-    + cos(poz_serva2*poz_serva3) * z , cos(poz_serva1) * cos(poz_serva2*poz_serva3) * y + sin(poz_serva1) * cos(poz_serva2*poz_serva3) * z + sin(poz_serva2*poz_serva3) * 0);
+    rad4 = atan2(-cos(poz_serva1) * sin(poz_serva2*poz_serva3) * pozosy - sin(poz_serva1) * sin(poz_serva2*poz_serva3) * pozosz + cos(poz_serva2*poz_serva3) * pozosz
+    + cos(poz_serva2*poz_serva3) * pozosz , cos(poz_serva1) * cos(poz_serva2*poz_serva3) * pozosy + sin(poz_serva1) * cos(poz_serva2*poz_serva3) * pozosz + sin(poz_serva2*poz_serva3) * 0);
     
-    rad5 = atan2(+-sqrt(1-pow(sin(poz_serva1)*y-cos(poz_serva1) *z,2)),sin(poz_serva1)*y-cos(poz_serva1)*sin(poz_serva2*poz_serva3));
+    rad5 = atan2(+-sqrt(1-pow(sin(poz_serva1)*pozosy-cos(poz_serva1) *pozosz,2)),sin(poz_serva1)*pozosy-cos(poz_serva1)*sin(poz_serva2*poz_serva3));
 
-    poz_serva1 = rad1*180/PI;
-    poz_serva2 = rad2*180/PI;
-    poz_serva3 = rad3*180/PI;
-    poz_serva4 = rad4*180/PI;
-    poz_serva5 = rad5*180/PI;
+    poz_serva1 = rad1*180;
+    poz_serva2 = rad2;
+    poz_serva3 = rad3;
+    poz_serva4 = rad4*180;
+    poz_serva5 = rad5*180;
+
+    miror = 180 - poz_serva2;
+    zakladna.write(poz_serva1);
+    rameno.write(poz_serva2);
+    ruka.write(miror);
+    loket.write(poz_serva3);
+    predlokti.write(poz_serva4);
+    zapesti.write(poz_serva5);
 }
 void aktualni_pozice(){
-
-
-MatrixXd DH(6, 4);
-DH <<
-    0, 0, L1, poz_serva1,
-    0,90 ,0, poz_serva2,
-    L2, 0, -L3, poz_serva3+90,
-    0, -90, 0, poz_serva4-90,
-    L4+L5, 90, 0, poz_serva5,
-    0, 0, L6, poz_serva6;
-// ai-1 | alfa i-1 | di|uheli| 
-alfa = DH(1,1);
-alfa2= DH(1,3);
-alfa3= DH(1,4);
-
 MatrixXd A(4, 4);
 A << 
     cos(poz_serva1), -sin(poz_serva1), 0, 0,
@@ -1048,9 +1090,9 @@ B <<
 
 MatrixXd C(4, 4);
 C << 
-    cos(poz_serva3 + 90), -sin(poz_serva3 + 90), 0, L2,
+    cos(poz_serva3 + 90), -sin(poz_serva3 + 90), 0, -L2,
     sin(poz_serva3 + 90) , cos(poz_serva3 + 90) , 0, 0,
-    0, 0, 1, -L3,
+    0, 0, 1, L3,
     0, 0, 0, 1;
 
 MatrixXd D(4, 4);
@@ -1068,5 +1110,10 @@ E <<
     0, 0, 0, 1;
 
 MatrixXd G = A * B * C * D * E;
-
+x = G(0, 3);
+y = G(1, 3);
+z = G(2, 3);
+polohaX = 0;
+polohaY = 0;
+polohaZ = 0;
 }
