@@ -1,5 +1,4 @@
-#include <SPI.h>
-#include <SD.h>
+
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -11,9 +10,9 @@
 #include <ArduinoEigenDense.h>
 #include <cmath>
 
-
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
 using Eigen::MatrixXd;
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
 //---------------------------------------------------------------------------funkce-------------------------------------------------------------------------
 void uvod();
 void osovy_rezim();
@@ -46,9 +45,6 @@ void zpet2();
 void autor1();
 void kontrola();
 void aktpoz();
-void souradniceA();
-void souradniceB();
-void souradniceefeektor();
 void inv_kinematika();
 void aktualni_pozice();
 //---------------------------------------------------------------------------inicializace serv---------------------------------------------------------------------------
@@ -1021,6 +1017,7 @@ void inv_kinematika(){
     poz_serva5 = rad5*180/PI;
 }
 void aktualni_pozice(){
+
 
 MatrixXd DH(6, 4);
 DH <<
