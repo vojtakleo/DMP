@@ -9,11 +9,12 @@
 #include <ArduinoEigenDense.h>
 #include <cmath>
 #include <LiquidCrystal_I2C.h>
+#include <EEPROM.h>
 int lcdColumns = 20;
 int lcdRows = 4;
 using Eigen::MatrixXd;
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
-
+#define EEPROM_SIZE 220
 //---------------------------------------------------------------------------funkce-------------------------------------------------------------------------
 void uvod();
 void osovy_rezim();
@@ -84,20 +85,22 @@ float polohaX=0,polohaY=0,polohaZ=0;
 float pozosx=0,pozosy=0,pozosz=0;
 
 //---------------------------------------------------------------------------souradnice----------------------------------------------------------------------------
-float const alfa = 90/180;
+float const alfa = 0;
 float const alfa2 = -90/180;
-float const alfa3 = 90/180;
-int const L1 = 242;     //zem   -> osa2
-int const L2 = 0;       //osa2  -> osa3 v x
-int const L3 = 209;     //osa2  -> osa3 v y
-int const L4 = 100;     //osa3  -> osa4
-int const L5 = 112;     //osa4  -> osa5
-int const L6 = 142;     //osa5  -> konec efektoru
+float const alfa3 = 0;
+float const alfa4 = -90/180;
+float const alfa5 = 90/180;
+float const alfa6 = 0;
+int const D1 = 249;    
+int const D4 = 237;       
+int const D6 = 150;     
+int const A2 = 209;     
 float x, y, z;
 int s,r;
 float rad1, rad2, rad3, rad4, rad5;
 //-------------------------------------------------------------------------setup-----------------------------------------------------------------------------
 void setup() {
+  EEPROM.begin(EEPROM_SIZE);
   pinMode(CLK,INPUT);
   pinMode(DT,INPUT);
   stavPred = digitalRead(CLK);
@@ -114,15 +117,34 @@ void setup() {
   predlokti.attach(27);
   zapesti.attach(14);
   efektor.attach(12);
+  //-------------eeprom----------
+  pol = EEPROM.read(1);
+  poz_serva2 =EEPROM.read(2);
+  miror = EEPROM.read(3);
+  poz_serva3 = EEPROM.read(4);
+  poz_serva4 = EEPROM.read(5);
+  poz_serva5  =EEPROM.read(6);
+  poz_serva6 =EEPROM.read(7);
+  miror = 180 - poz_serva2;
+  parek = ((pol+135)/270)*180;
+  poz_serva1 = parek;
+  zakladna.write(poz_serva1);
+  rameno.write(poz_serva2);
+  ruka.write(miror);
+  loket.write(poz_serva3);
+  predlokti.write(poz_serva4);
+  zapesti.write(poz_serva5);
+  efektor.write(poz_serva6);
 }
 //-------------------------------------------------------------------------loop-----------------------------------------------------------------------------
 // z loopu jsou pomoci logiky funkcí if a switch volány funkce níže v kodu
 void loop() {
-enkoder();
-kontrola();
+  enkoder();
+  kontrola();
 
-if (tlacitko == 0){
-  uvod();
+  if (tlacitko == 0)
+  {
+    uvod();
 }
 if (tlacitko == 1){
 
@@ -297,7 +319,7 @@ if (tlacitko == 3 && poz == 2)
       osaZ();
       break;
     case 4:
-      inv_kinematika();
+      //inv_kinematika();
       bod();
       break;
     case 5:
@@ -324,6 +346,14 @@ if (tlacitko == 4 )
   predlokti.write(poz_serva4);
   zapesti.write(poz_serva5);
   efektor.write(poz_serva6);
+  EEPROM.write(1, pol);
+  EEPROM.write(2, poz_serva2);
+  EEPROM.write(3, miror);
+  EEPROM.write(4, poz_serva3);
+  EEPROM.write(5, poz_serva4);
+  EEPROM.write(6, poz_serva5);
+  EEPROM.write(7, poz_serva6);
+  EEPROM.commit();
   }
 
 }
@@ -342,17 +372,17 @@ void enkoder()
       if (tlacitko == 2)
       {nav++;}
       if (tlacitko == 3 && poz == 1 && nav == 1)
-      {pol++;}
+      {pol=pol+5;}
       if (tlacitko == 3 && poz == 1 && nav == 2)
-      {poz_serva2++;}
+      {poz_serva2=poz_serva2+5;}
       if (tlacitko == 3 && poz == 1 && nav == 3)
-      {poz_serva3++;}
+      {poz_serva3=poz_serva3+5;}
       if (tlacitko == 3 && poz == 1 && nav == 4)
-      {poz_serva4++;}
+      {poz_serva4=poz_serva4+5;}
       if (tlacitko == 3 && poz == 1 && nav == 5)
-      {poz_serva5++;}
+      {poz_serva5=poz_serva5+5;}
       if (tlacitko == 3 && poz == 1 && nav == 6)
-      {poz_serva6++;}
+      {poz_serva6=poz_serva6+5;}
       if (tlacitko == 3 && poz == 2 && nav == 1)
       {polohaX++;}
       if (tlacitko == 3 && poz == 2 && nav == 2)
@@ -367,17 +397,17 @@ void enkoder()
       if (tlacitko == 2)
       {nav--;}
       if (tlacitko == 3 && poz == 1 && nav == 1)
-      {pol--;}
+      {pol=pol-5;}
       if (tlacitko == 3 && poz == 1 && nav == 2)
-      {poz_serva2--;}
+      {poz_serva2=poz_serva2-5;}
       if (tlacitko == 3 && poz == 1 && nav == 3)
-      {poz_serva3--;}
+      {poz_serva3=poz_serva3-5;}
       if (tlacitko == 3 && poz == 1 && nav == 4)
-      {poz_serva4--;}
+      {poz_serva4=poz_serva4-5;}
       if (tlacitko == 3 && poz == 1 && nav == 5)
-      {poz_serva5--;}
+      {poz_serva5=poz_serva5-5;}
       if (tlacitko == 3 && poz == 1 && nav == 6)
-      {poz_serva6--;}
+      {poz_serva6=poz_serva6-5;}
       if (tlacitko == 3 && poz == 2 && nav == 1)
       {polohaX--;}
       if (tlacitko == 3 && poz == 2 && nav == 2)
@@ -400,8 +430,8 @@ if (stavSW == 0) {
 void kontrola()
 {
 
-  if (pol >= 135)
-  { pol = 135; }
+  if (pol >= 122)
+  { pol = 122; }
   if (poz_serva2 >= maximum)
   { poz_serva2 = 180; }
   if (poz_serva3 >= maximum)
@@ -413,8 +443,8 @@ void kontrola()
   if (poz_serva6 >= 70)
   { poz_serva6 = 70; }
 
-  if (pol <= -135)
-  { pol = -135; }
+  if (pol <= -122)
+  { pol = -122; }
   if (poz_serva2 <= minimum)
   { poz_serva2 = 0; }
   if (poz_serva3 <= minimum)
@@ -705,9 +735,15 @@ void osaZ()
 
   }
 void bod(){
-  inv_kinematika(); 
+  //inv_kinematika(); 
   lcd.setCursor(0,0);
-  lcd.print("probyha presun");
+  lcd.print("tento rezim ");
+  lcd.setCursor(0,1);
+  lcd.print("nefungoval jak bylo");
+  lcd.setCursor(0,2);
+  lcd.print("planovano a musel");
+  lcd.setCursor(0,3);
+  lcd.print("byt odstranen");
 
   }
  
@@ -764,7 +800,7 @@ void ovl_osy1()
 void ovl_osy2()
 {
   lcd.setCursor(0,0);
-  lcd.print("osa 2 zakladna");
+  lcd.print("osa 2 rameno 1");
   lcd.setCursor(0,1);
   lcd.print("uhel otoceni:");
   lcd.setCursor(13,1);
@@ -778,7 +814,7 @@ void ovl_osy2()
 void ovl_osy3()
 {
   lcd.setCursor(0,0);
-  lcd.print("osa 3 zakladna");
+  lcd.print("osa 3 rameno 2");
   lcd.setCursor(0,1);
   lcd.print("uhel otoceni:");
   lcd.setCursor(13,1);
@@ -792,7 +828,7 @@ void ovl_osy3()
 void ovl_osy4()
 {
   lcd.setCursor(0,0);
-  lcd.print("osa 4 zakladna");
+  lcd.print("osa 4 natoceni ");
   lcd.setCursor(0,1);
   lcd.print("uhel otoceni:");
   lcd.setCursor(13,1);
@@ -807,7 +843,7 @@ void ovl_osy4()
 void ovl_osy5()
 {
   lcd.setCursor(0,0);
-  lcd.print("osa 5 zakladna");
+  lcd.print("osa 5 rameno 3");
   lcd.setCursor(0,1);
   lcd.print("uhel otoceni:");
   lcd.setCursor(13,1);
@@ -822,7 +858,7 @@ void ovl_osy5()
 void ovl_osy6()
 {
   lcd.setCursor(0,0);
-  lcd.print("osa 6 zakladna");
+  lcd.print("osa 6 efektor");
   lcd.setCursor(0,1);
   lcd.print("uhel otoceni:");
   lcd.setCursor(13,1);
@@ -836,8 +872,12 @@ void ovl_osy6()
 
 
 void inv_kinematika(){
-    s = pozosz - 242;
-    // 242 vzdálenost od zeme k druhe ose
+  pozosx = x + polohaX;
+  pozosy = y + polohaY;
+  pozosz = z + polohaZ;
+
+    s = pozosz - D1;
+    // L1 vzdálenost od zeme k druhe ose
     r = sqrt(pow(pozosx, 2) + pow(pozosy, 2));
     rad1 = atan2(pozosy,pozosx);
 
@@ -855,8 +895,6 @@ void inv_kinematika(){
     poz_serva3 = rad3;
     poz_serva4 = rad4*180;
     poz_serva5 = rad5*180;
-
-
     parek = ((pol+135)/270)*180;
     poz_serva1 = parek;
     zakladna.write(poz_serva1);
@@ -866,48 +904,63 @@ void inv_kinematika(){
     loket.write(poz_serva3);
     predlokti.write(poz_serva4);
     zapesti.write(poz_serva5);
+
+    EEPROM.write(1, pol);
+    EEPROM.write(2, poz_serva2);
+    EEPROM.write(3, miror);
+    EEPROM.write(4, poz_serva3);
+    EEPROM.write(5, poz_serva4);
+    EEPROM.write(6, poz_serva5);
+    EEPROM.commit();
+    //---------vynulování zadávaných změn--------------------
+
 }
 void aktualni_pozice(){
 MatrixXd A(4, 4);
 A << 
     cos(poz_serva1), -sin(poz_serva1), 0, 0,
-    sin(poz_serva1), cos(poz_serva1),0,0,
-    0, 0,1,L1,
+    sin(poz_serva1)*cos(alfa), cos(poz_serva1)*cos(alfa),-sin(alfa),-sin(alfa)*D1,
+    sin(poz_serva1)*sin(alfa), cos(poz_serva1)*sin(alfa),cos(alfa),cos(alfa)*D1,
     0, 0, 0, 1;
 
 MatrixXd B(4, 4);
 B << 
-    cos(poz_serva2), -sin(poz_serva2), 0, 0,
-    sin(poz_serva2)*cos(alfa),cos(poz_serva2)*cos(alfa), -sin(alfa), 0,
-    sin(poz_serva2)*sin(alfa), cos(poz_serva2)*sin(alfa), cos(alfa), 0,
+    cos(poz_serva2-90), -sin(poz_serva2-90), 0, A2,
+    sin(poz_serva2-90)*cos(alfa2),cos(poz_serva2-90)*cos(alfa2), -sin(alfa2), 0,
+    sin(poz_serva2-90)*sin(alfa2), cos(poz_serva2-90)*sin(alfa2), cos(alfa2), 0,
     0, 0, 0, 1;
 
 MatrixXd C(4, 4);
 C << 
-    cos(poz_serva3 + 90), -sin(poz_serva3 + 90), 0, -L2,
-    sin(poz_serva3 + 90) , cos(poz_serva3 + 90) , 0, 0,
-    0, 0, 1, L3,
+    cos(poz_serva3), -sin(poz_serva3), 0, 0,
+    sin(poz_serva3-90)*cos(alfa3) ,cos(poz_serva3-90)*cos(alfa3) , -sin(alfa3), -sin(alfa3)*0,
+    sin(poz_serva3-90)*sin(alfa3), cos(poz_serva3-90)*sin(alfa3), cos(alfa3), cos(alfa3)* 0,
     0, 0, 0, 1;
 
 MatrixXd D(4, 4);
 D << 
     cos(poz_serva4), -sin(poz_serva4), 0, 0,
-    sin(poz_serva4) * cos(alfa2), cos(poz_serva4) * cos(alfa2), -sin(alfa2),0,
-    sin(poz_serva4) * sin(alfa2), cos(poz_serva4) * sin(alfa2), cos(alfa2),0,
+    sin(poz_serva4) * cos(alfa4), cos(poz_serva4) * cos(alfa4), -sin(alfa4),-sin(alfa4)*D4,
+    sin(poz_serva4) * sin(alfa4), cos(poz_serva4) * sin(alfa4), cos(alfa4),cos(alfa4)*D4,
     0, 0, 0, 1;
 
 MatrixXd E(4, 4);
 E << 
-    cos(poz_serva5), -sin(poz_serva5), 0, L4 + L5,
-    sin(poz_serva5) * cos(alfa3), cos(poz_serva5) * cos(alfa3), -sin(alfa3), 0,
-    sin(poz_serva5) * sin(alfa3), cos(poz_serva5) * sin(alfa3), cos(alfa3),0,
+    cos(poz_serva5), -sin(poz_serva5), 0, 0,
+    sin(poz_serva5) * cos(alfa5), cos(poz_serva5) * cos(alfa5), -sin(alfa5),-sin(alfa5)*0,
+    sin(poz_serva5) * sin(alfa5), cos(poz_serva5) * sin(alfa5), cos(alfa5),cos(alfa5)*0,
+    0, 0, 0, 1;
+MatrixXd H(4, 4);
+H << 
+    cos(0), -sin(0), 0, 0,
+    sin(0) * cos(alfa6), cos(0) * cos(alfa6), -sin(alfa6),-sin(alfa6)*D6,
+    sin(0) * sin(alfa6), cos(0) * sin(alfa6), cos(alfa6),cos(alfa6)*D6,
     0, 0, 0, 1;
 
-MatrixXd G = A * B * C * D * E;
+MatrixXd G = A * B * C * D * E * H;
+
 x = G(0, 3);
 y = G(1, 3);
 z = G(2, 3);
-polohaX = 0;
-polohaY = 0;
-polohaZ = 0;
+
 }
